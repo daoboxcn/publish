@@ -1,0 +1,19 @@
+{
+  "name": "daobox-site",
+  "version": "0.3.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node install.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=12"
+  },
+  "bin": {
+    "daobox-site": "bin/daobox-site"
+  }
+}
