@@ -165,9 +165,26 @@ function deleteDirectory(path) {
   }
 }
 
+// 对指定目录进行遍历
+function traverseDirectory(directory) {
+  const fileList = [];
+  const files = fs.readdirSync(directory);
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const filePath = path.join(directory, file);
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      fileList.push(...traverseDirectory(filePath));
+    } else {
+      fileList.push(filePath);
+    }
+  }
+  return fileList;
+}
+
 async function downloadBinary(pkg, binName) {
-  //   const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
-  const fileUrl = "http://localhost:8000/daobox/daobox-site.tar.gz";
+    const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+  // const fileUrl = "http://localhost:8000/daobox/daobox-site.tar.gz";
   const filename = path.join(__dirname, "bin", pkg);
 
   return new Promise((resolve, reject) => {
@@ -191,22 +208,23 @@ async function downloadBinary(pkg, binName) {
         const extractFinish = () => {
           // 最终BIN文件名
           const binFile = path.join(dest, binName);
-        //   console.log("final bin name", binFile);
-        //   console.log("extract dir", extractDir);
+          //   console.log("final bin name", binFile);
+          //   console.log("extract dir", extractDir);
 
           // 迁移bin文件到可执行目录
-          const files = fs.readdirSync(extractDir);
+          const files = traverseDirectory(extractDir);
 
           // 打印所有文件
-        //   console.log("files", files);
+          //   console.log("files", files);
 
           files.some(function (file) {
-            if (!/^daobox\-site/.test(file)) {
+            const arr = file.split("/");
+            if (!/^daobox\-site/.test(arr[arr.length - 1])) {
               return false;
             }
 
             // 使用 fs.rename 方法将文件从源路径移动到目标路径
-            fs.renameSync(path.join(extractDir, file), binFile, function (err) {
+            fs.renameSync(file, binFile, function (err) {
               if (err) {
                 throw err;
               }
