@@ -25,12 +25,12 @@ var path = require("path");
 var knownWindowsPackages = {
   //   "win32 arm64": "@esbuild/win32-arm64",
   //   "win32 ia32": "@esbuild/win32-ia32",
-  "win32 x64": "@esbuild/win32-x64",
+  "win32 x64": "windows-amd64.tar.gz",
 };
 var knownUnixlikePackages = {
   //   "android arm64": "@esbuild/android-arm64",
   //   "darwin arm64": "@esbuild/darwin-arm64",
-  "darwin x64": "darwin-amd64.tar.gz",
+  "darwin x64": "macOS-amd64.tar.gz",
   //   "freebsd arm64": "@esbuild/freebsd-arm64",
   //   "freebsd x64": "@esbuild/freebsd-x64",
   //   "linux arm": "@esbuild/linux-arm",
@@ -186,9 +186,10 @@ async function downloadBinary(pkg, binName) {
     const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
   // const fileUrl = "http://localhost:8000/daobox/daobox-site.tar.gz";
   const filename = path.join(__dirname, "bin", pkg);
+  console.log('download daobox binary:', fileUrl)
 
   return new Promise((resolve, reject) => {
-    http.get(fileUrl, (response) => {
+    https.get(fileUrl, (response) => {
       const fileStream = fs.createWriteStream(filename);
       response.pipe(fileStream);
       fileStream.on("finish", () => {
