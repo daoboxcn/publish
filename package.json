@@ -17,6 +17,7 @@
     "daobox-site": "bin/daobox-site"
   },
   "dependencies": {
-    "adm-zip": "^0.5.10"
+    "adm-zip": "^0.5.10",
+    "tar": "^6.1.13"
   }
 }

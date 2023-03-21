@@ -70,6 +70,7 @@ var os2 = require("os");
 var path2 = require("path");
 var zlib = require("zlib");
 var AdmZip = require("adm-zip");
+const tar = require("tar");
 var https = require("https");
 var http = require("http");
 var child_process = require("child_process");
@@ -144,9 +145,29 @@ function isYarn() {
   return false;
 }
 
+function deleteDirectory(path) {
+  if (fs.existsSync(path)) {
+    fs.readdirSync(path).forEach((file, index) => {
+      const currentPath = path + "/" + file;
+      if (fs.lstatSync(currentPath).isDirectory()) {
+        // 递归删除子目录
+        deleteDirectory(currentPath);
+      } else {
+        // 删除文件
+        fs.unlinkSync(currentPath);
+      }
+    });
+    // 删除目录本身
+    fs.rmdirSync(path);
+    console.log(`Successfully deleted the directory ${path}.`);
+  } else {
+    console.log(`Directory ${path} does not exist.`);
+  }
+}
+
 async function downloadBinary(pkg, binName) {
-  const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
-  //   const fileUrl = "http://localhost:8000/daobox/daobox-site";
+  //   const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+  const fileUrl = "http://localhost:8000/daobox/daobox-site.tar.gz";
   const filename = path.join(__dirname, "bin", pkg);
 
   return new Promise((resolve, reject) => {
@@ -155,25 +176,85 @@ async function downloadBinary(pkg, binName) {
       response.pipe(fileStream);
       fileStream.on("finish", () => {
         console.log(`File saved as ${filename}`);
-        fs2.chmodSync(filename, 493);
+
+        const dest = path.dirname(filename);
+        const extractDir = path.join(dest, "download");
+        // 判断目录是否存在，不存在则创建
+        if (!fs.existsSync(extractDir)) {
+          fs.mkdirSync(extractDir, { recursive: true }, function (err) {
+            if (err) {
+              return reject(err);
+            }
+          });
+        }
+
+        const extractFinish = () => {
+          // 最终BIN文件名
+          const binFile = path.join(dest, binName);
+        //   console.log("final bin name", binFile);
+        //   console.log("extract dir", extractDir);
+
+          // 迁移bin文件到可执行目录
+          const files = fs.readdirSync(extractDir);
+
+          // 打印所有文件
+        //   console.log("files", files);
+
+          files.some(function (file) {
+            if (!/^daobox\-site/.test(file)) {
+              return false;
+            }
+
+            // 使用 fs.rename 方法将文件从源路径移动到目标路径
+            fs.renameSync(path.join(extractDir, file), binFile, function (err) {
+              if (err) {
+                throw err;
+              }
+            });
+
+            return true;
+          });
+
+          deleteDirectory(extractDir);
+          fs2.unlinkSync(filename);
+
+          fs2.chmodSync(binFile, 493);
+        };
 
         // 解压缩
         if (/\.tar\.gz$/.test(filename)) {
           const readStream = fs.createReadStream(filename);
           const unzip = zlib.createGunzip(); // 创建 gunzip 解压缩流
-          const untar = tar.extract(destination); // 创建 tar 解压缩流
+          const untar = tar.x({
+            sync: true,
+            C: extractDir, // alias for cwd:'some-dir', also ok
+          }); // 创建 tar 解压缩流
 
           readStream
             .pipe(unzip) // 使用 gunzip 解压缩流
             .pipe(untar) // 使用 tar 解压缩流
+            .on("error", (err) => {
+              console.error(err);
+            })
             .on("finish", () => {
-              console.log("解压缩完成");
-              resolve();
+              //   console.log("解压缩完成", filename, extractDir);
+
+              try {
+                extractFinish();
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
             });
         } else if (/\.zip$/.test(filename)) {
           const zip = new AdmZip(filename); // 指定 ZIP 文件路径
-          zip.extractAllTo(path.dirname(filename), true); // 解压 ZIP 文件到指定目录
-          resolve();
+          zip.extractAllTo(extractDir, true); // 解压 ZIP 文件到指定目录
+          try {
+            extractFinish();
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
         } else {
           reject(`not support archive package: ${pkg}`);
         }
@@ -190,7 +271,7 @@ async function checkAndPreparePackage() {
   try {
     await downloadBinary(pkg, binName);
   } catch (e3) {
-    // console.error("error", e3);
+    console.error("error", e3);
     throw new Error(`Failed to install package "${pkg}"`);
   }
 }
