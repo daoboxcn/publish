@@ -15,5 +15,8 @@
   },
   "bin": {
     "daobox-site": "bin/daobox-site"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.10"
   }
 }

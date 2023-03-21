@@ -16,19 +16,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (
-  (target = mod != null ? __create(__getProtoOf(mod)) : {}),
-  __copyProps(
-    // If the importer is in node compatibility mode or this is not an ESM
-    // file that has been converted to a CommonJS file using a Babel-
-    // compatible transform (i.e. "__esModule" has not been set), then set
-    // "default" to the CommonJS "module.exports" for node compatibility.
-    isNodeMode || !mod || !mod.__esModule
-      ? __defProp(target, "default", { value: mod, enumerable: true })
-      : target,
-    mod
-  )
-);
 
 // lib/npm/node-platform.ts
 var fs = require("fs");
@@ -36,61 +23,45 @@ var os = require("os");
 var path = require("path");
 
 var knownWindowsPackages = {
-  "win32 arm64 LE": "@esbuild/win32-arm64",
-  "win32 ia32 LE": "@esbuild/win32-ia32",
-  "win32 x64 LE": "@esbuild/win32-x64",
+  //   "win32 arm64": "@esbuild/win32-arm64",
+  //   "win32 ia32": "@esbuild/win32-ia32",
+  "win32 x64": "@esbuild/win32-x64",
 };
 var knownUnixlikePackages = {
-  "android arm64 LE": "@esbuild/android-arm64",
-  "darwin arm64 LE": "@esbuild/darwin-arm64",
-  "darwin x64 LE": "@esbuild/darwin-x64",
-  "freebsd arm64 LE": "@esbuild/freebsd-arm64",
-  "freebsd x64 LE": "@esbuild/freebsd-x64",
-  "linux arm LE": "@esbuild/linux-arm",
-  "linux arm64 LE": "@esbuild/linux-arm64",
-  "linux ia32 LE": "@esbuild/linux-ia32",
-  "linux mips64el LE": "@esbuild/linux-mips64el",
-  "linux ppc64 LE": "@esbuild/linux-ppc64",
-  "linux riscv64 LE": "@esbuild/linux-riscv64",
-  "linux s390x BE": "@esbuild/linux-s390x",
-  "linux x64 LE": "@esbuild/linux-x64",
-  "linux loong64 LE": "@esbuild/linux-loong64",
-  "netbsd x64 LE": "@esbuild/netbsd-x64",
-  "openbsd x64 LE": "@esbuild/openbsd-x64",
-  "sunos x64 LE": "@esbuild/sunos-x64",
-};
-
-var knownWebAssemblyFallbackPackages = {
-  "android arm LE": "@esbuild/android-arm",
-  "android x64 LE": "@esbuild/android-x64",
+  //   "android arm64": "@esbuild/android-arm64",
+  //   "darwin arm64": "@esbuild/darwin-arm64",
+  "darwin x64": "darwin-amd64.tar.gz",
+  //   "freebsd arm64": "@esbuild/freebsd-arm64",
+  //   "freebsd x64": "@esbuild/freebsd-x64",
+  //   "linux arm": "@esbuild/linux-arm",
+  //   "linux arm64": "@esbuild/linux-arm64",
+  //   "linux ia32": "@esbuild/linux-ia32",
+  //   "linux mips64el": "@esbuild/linux-mips64el",
+  //   "linux ppc64": "@esbuild/linux-ppc64",
+  //   "linux riscv64": "@esbuild/linux-riscv64",
+  //   "linux s390x BE": "@esbuild/linux-s390x",
+  "linux x64": "linux-amd64.tar.gz",
+  //   "linux loong64": "@esbuild/linux-loong64",
+  //   "netbsd x64": "@esbuild/netbsd-x64",
+  //   "openbsd x64": "@esbuild/openbsd-x64",
+  //   "sunos x64": "@esbuild/sunos-x64",
 };
 
 // 返回可执行文件信息
 function pkgAndSubpathForCurrentPlatform() {
   let pkg;
-  let subpath;
-  let isWASM = false;
-  let platformKey = `${process.platform} ${os.arch()} ${os.endianness()}`;
+  let binName;
+  let platformKey = `${process.platform} ${os.arch()}`;
   if (platformKey in knownWindowsPackages) {
     pkg = knownWindowsPackages[platformKey];
-    subpath = "daobox-site.exe";
+    binName = "daobox-site.exe";
   } else if (platformKey in knownUnixlikePackages) {
     pkg = knownUnixlikePackages[platformKey];
-    subpath = "daobox-site.bin";
+    binName = "daobox-site.bin";
   } else {
     throw new Error(`Unsupported platform: ${platformKey}`);
   }
-  return { pkg, subpath, isWASM };
-}
-
-// 临时下载存储路径
-function downloadedBinPath(pkg, subpath) {
-//   const esbuildLibDir = path.dirname(require.resolve("daobox-site"));
-    const esbuildLibDir = path.join(__dirname, "bin");
-  return path.join(
-    esbuildLibDir,
-    `downloaded-${pkg.replace("/", "-")}-${path.basename(subpath)}`
-  );
+  return { pkg, binName };
 }
 
 // lib/npm/node-install.ts
@@ -98,6 +69,7 @@ var fs2 = require("fs");
 var os2 = require("os");
 var path2 = require("path");
 var zlib = require("zlib");
+var AdmZip = require("adm-zip");
 var https = require("https");
 var http = require("http");
 var child_process = require("child_process");
@@ -105,7 +77,11 @@ var versionFromPackageJSON = require(path2.join(
   __dirname,
   "package.json"
 )).version;
-var toPath = path2.join(__dirname, "bin", pkgAndSubpathForCurrentPlatform().subpath);
+var toPath = path2.join(
+  __dirname,
+  "bin",
+  pkgAndSubpathForCurrentPlatform().binName
+);
 
 function validateBinaryVersion(...command) {
   command.push("--version");
@@ -168,9 +144,10 @@ function isYarn() {
   return false;
 }
 
-async function downloadBinary() {
-  const fileUrl = "http://localhost:8000/daobox/daobox-site";
-  const filename = toPath;
+async function downloadBinary(pkg, binName) {
+  const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+  //   const fileUrl = "http://localhost:8000/daobox/daobox-site";
+  const filename = path.join(__dirname, "bin", pkg);
 
   return new Promise((resolve, reject) => {
     http.get(fileUrl, (response) => {
@@ -179,7 +156,27 @@ async function downloadBinary() {
       fileStream.on("finish", () => {
         console.log(`File saved as ${filename}`);
         fs2.chmodSync(filename, 493);
-        resolve();
+
+        // 解压缩
+        if (/\.tar\.gz$/.test(filename)) {
+          const readStream = fs.createReadStream(filename);
+          const unzip = zlib.createGunzip(); // 创建 gunzip 解压缩流
+          const untar = tar.extract(destination); // 创建 tar 解压缩流
+
+          readStream
+            .pipe(unzip) // 使用 gunzip 解压缩流
+            .pipe(untar) // 使用 tar 解压缩流
+            .on("finish", () => {
+              console.log("解压缩完成");
+              resolve();
+            });
+        } else if (/\.zip$/.test(filename)) {
+          const zip = new AdmZip(filename); // 指定 ZIP 文件路径
+          zip.extractAllTo(path.dirname(filename), true); // 解压 ZIP 文件到指定目录
+          resolve();
+        } else {
+          reject(`not support archive package: ${pkg}`);
+        }
       });
       fileStream.on("error", (e) => {
         reject(e);
@@ -188,95 +185,10 @@ async function downloadBinary() {
   });
 }
 
-function fetch(url) {
-  return new Promise((resolve, reject) => {
-    https
-      .get(url, (res) => {
-        if (
-          (res.statusCode === 301 || res.statusCode === 302) &&
-          res.headers.location
-        )
-          return fetch(res.headers.location).then(resolve, reject);
-        if (res.statusCode !== 200)
-          return reject(new Error(`Server responded with ${res.statusCode}`));
-        let chunks = [];
-        res.on("data", (chunk) => chunks.push(chunk));
-        res.on("end", () => resolve(Buffer.concat(chunks)));
-      })
-      .on("error", reject);
-  });
-}
-
-function extractFileFromTarGzip(buffer, subpath) {
-  try {
-    buffer = zlib.unzipSync(buffer);
-  } catch (err) {
-    throw new Error(
-      `Invalid gzip data in archive: ${(err && err.message) || err}`
-    );
-  }
-
-  let str = (i, n) =>
-    String.fromCharCode(...buffer.subarray(i, i + n)).replace(/\0.*$/, "");
-  let offset = 0;
-  subpath = `package/${subpath}`;
-  while (offset < buffer.length) {
-    let name = str(offset, 100);
-    let size = parseInt(str(offset + 124, 12), 8);
-    offset += 512;
-    if (!isNaN(size)) {
-      if (name === subpath) return buffer.subarray(offset, offset + size);
-      offset += (size + 511) & ~511;
-    }
-  }
-  throw new Error(`Could not find ${JSON.stringify(subpath)} in archive`);
-}
-
-function removeRecursive(dir) {
-  for (const entry of fs2.readdirSync(dir)) {
-    const entryPath = path2.join(dir, entry);
-    let stats;
-    try {
-      stats = fs2.lstatSync(entryPath);
-    } catch {
-      continue;
-    }
-    if (stats.isDirectory()) removeRecursive(entryPath);
-    else fs2.unlinkSync(entryPath);
-  }
-  fs2.rmdirSync(dir);
-}
-
-async function downloadDirectlyFromNPM(pkg, subpath, binPath) {
-  console.log("download", arguments);
-  await downloadBinary();
-
-  //   const url = `https://registry.npmjs.org/${pkg}/-/${pkg.replace(
-  //     "@esbuild/",
-  //     ""
-  //   )}-${versionFromPackageJSON}.tgz`;
-  //   console.error(`[esbuild] Trying to download ${JSON.stringify(url)}`);
-  //   try {
-  //     fs2.writeFileSync(
-  //       binPath,
-  //       extractFileFromTarGzip(await fetch(url), subpath)
-  //     );
-  //     fs2.chmodSync(binPath, 493);
-  //   } catch (e) {
-  //     console.error(
-  //       `[esbuild] Failed to download ${JSON.stringify(url)}: ${
-  //         (e && e.message) || e
-  //       }`
-  //     );
-  //     throw e;
-  //   }
-}
-
 async function checkAndPreparePackage() {
-  const { pkg, subpath } = pkgAndSubpathForCurrentPlatform();
-  let binPath = downloadedBinPath(pkg, subpath);
+  const { pkg, binName } = pkgAndSubpathForCurrentPlatform();
   try {
-    await downloadDirectlyFromNPM(pkg, subpath, binPath);
+    await downloadBinary(pkg, binName);
   } catch (e3) {
     // console.error("error", e3);
     throw new Error(`Failed to install package "${pkg}"`);

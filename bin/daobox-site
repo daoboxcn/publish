@@ -9,7 +9,7 @@ var path = require("path");
 function pkgAndSubpathForCurrentPlatform() {
   let pkg;
   let binName;
-  let platformKey = `${process.platform} ${os.arch()} ${os.endianness()}`;
+  let platformKey = `${process.platform} ${os.arch()}`;
   switch (process.platform) {
     case "win32":
       binName = "daobox-site.exe";
