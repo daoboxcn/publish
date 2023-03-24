@@ -1,15 +1,14 @@
 {
   "name": "daobox-site",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "postinstall": "node install.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "dayu",
+  "license": "BSD",
   "engines": {
     "node": ">=12"
   },
