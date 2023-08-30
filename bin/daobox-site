@@ -27,6 +27,12 @@ function pkgAndSubpathForCurrentPlatform() {
 }
 
 const binPath = path.join(__dirname, pkgAndSubpathForCurrentPlatform().binName);
-require("child_process").execFileSync(binPath, process.argv.slice(2), {
-  stdio: "inherit",
-});
+
+try{
+  require("child_process").execFileSync(binPath, process.argv.slice(2), {
+    stdio: "inherit",
+  });
+} catch(ex){
+  console.error('error: ', ex.toString())
+  process.exit(1)
+}
