@@ -1,7 +1,6 @@
 "use strict";
 const Downloader = require("nodejs-file-downloader");
 
-
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -192,24 +191,27 @@ async function downloadBinary(pkg, binName) {
   const filename = path.join(__dirname, "bin", pkg);
   const dest = path.dirname(filename);
   console.log("download daobox binary:", fileUrl);
-  
+
   const proxy =
-  process.env.https_proxy ||
-  process.env.HTTPS_PROXY ||
-  process.env.http_proxy ||
-  process.env.HTTP_PROXY;
+    process.env.https_proxy ||
+    process.env.HTTPS_PROXY ||
+    process.env.http_proxy ||
+    process.env.HTTP_PROXY;
   console.log("use proxy", proxy);
-  
-  const downloader = new Downloader({
+
+  const params = {
     url: fileUrl,
     directory: dest,
-    proxy,
-  });
+  };
+  if (proxy) {
+    params.proxy = proxy;
+  }
+  const downloader = new Downloader(params);
 
   try {
     const { filePath, downloadStatus } = await downloader.download(); //Downloader.download() resolves with some useful properties.
     console.log(`File saved as ${filePath}`);
-    const filename = filePath
+    const filename = filePath;
 
     return new Promise((resolve, reject) => {
       const extractDir = path.join(dest, "download");
