@@ -183,7 +183,8 @@ function traverseDirectory(directory) {
 }
 
 async function downloadBinary(pkg, binName) {
-    const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+    // const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+    const fileUrl = `https://github.com/daoboxcn/site/releases/download/daobox-site%40v${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
   // const fileUrl = "http://localhost:8000/daobox/daobox-site.tar.gz";
   const filename = path.join(__dirname, "bin", pkg);
   console.log('download daobox binary:', fileUrl)
