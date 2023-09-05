@@ -1,4 +1,7 @@
 "use strict";
+const Downloader = require("nodejs-file-downloader");
+
+
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -159,9 +162,9 @@ function deleteDirectory(path) {
     });
     // 删除目录本身
     fs.rmdirSync(path);
-    console.log(`Successfully deleted the directory ${path}.`);
+    console.log(`Successfully deleted the directory ${path}`);
   } else {
-    console.log(`Directory ${path} does not exist.`);
+    console.log(`Directory ${path} does not exist`);
   }
 }
 
@@ -183,102 +186,125 @@ function traverseDirectory(directory) {
 }
 
 async function downloadBinary(pkg, binName) {
-    // const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
-    const fileUrl = `https://github.com/daoboxcn/site/releases/download/daobox-site%40v${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+  // const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+  const fileUrl = `https://github.com/daoboxcn/site/releases/download/daobox-site%40v${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
   // const fileUrl = "http://localhost:8000/daobox/daobox-site.tar.gz";
   const filename = path.join(__dirname, "bin", pkg);
-  console.log('download daobox binary:', fileUrl)
+  const dest = path.dirname(filename);
+  console.log("download daobox binary:", fileUrl);
+  
+  const proxy =
+  process.env.https_proxy ||
+  process.env.HTTPS_PROXY ||
+  process.env.http_proxy ||
+  process.env.HTTP_PROXY;
+  console.log("use proxy", proxy);
+  
+  const downloader = new Downloader({
+    url: fileUrl,
+    directory: dest,
+    proxy,
+  });
+
+  try {
+    const { filePath, downloadStatus } = await downloader.download(); //Downloader.download() resolves with some useful properties.
+    console.log(`File saved as ${filePath}`);
+    const filename = filePath
+
+    return new Promise((resolve, reject) => {
+      const extractDir = path.join(dest, "download");
+      // 判断目录是否存在，不存在则创建
+      if (!fs.existsSync(extractDir)) {
+        fs.mkdirSync(extractDir, { recursive: true }, function (err) {
+          if (err) {
+            return reject(err);
+          }
+        });
+      }
+
+      const extractFinish = () => {
+        // 最终BIN文件名
+        const binFile = path.join(dest, binName);
+        //   console.log("final bin name", binFile);
+        //   console.log("extract dir", extractDir);
+
+        // 迁移bin文件到可执行目录
+        const files = traverseDirectory(extractDir);
+
+        // 打印所有文件
+        //   console.log("files", files);
+
+        files.some(function (file) {
+          const arr = file.split("/");
+          if (!/^daobox\-site/.test(arr[arr.length - 1])) {
+            return false;
+          }
+
+          // 使用 fs.rename 方法将文件从源路径移动到目标路径
+          fs.renameSync(file, binFile, function (err) {
+            if (err) {
+              throw err;
+            }
+          });
+
+          return true;
+        });
+
+        deleteDirectory(extractDir);
+        fs2.unlinkSync(filename);
+
+        fs2.chmodSync(binFile, 493);
+      };
+
+      // 解压缩
+      if (/\.tar\.gz$/.test(filename)) {
+        const readStream = fs.createReadStream(filename);
+        const unzip = zlib.createGunzip(); // 创建 gunzip 解压缩流
+        const untar = tar.x({
+          sync: true,
+          C: extractDir, // alias for cwd:'some-dir', also ok
+        }); // 创建 tar 解压缩流
+
+        readStream
+          .pipe(unzip) // 使用 gunzip 解压缩流
+          .pipe(untar) // 使用 tar 解压缩流
+          .on("error", (err) => {
+            console.error(err);
+          })
+          .on("finish", () => {
+            //   console.log("解压缩完成", filename, extractDir);
+
+            try {
+              extractFinish();
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          });
+      } else if (/\.zip$/.test(filename)) {
+        const zip = new AdmZip(filename); // 指定 ZIP 文件路径
+        zip.extractAllTo(extractDir, true); // 解压 ZIP 文件到指定目录
+        try {
+          extractFinish();
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      } else {
+        reject(`not support archive package: ${pkg}`);
+      }
+    });
+  } catch (error) {
+    //IMPORTANT: Handle a possible error. An error is thrown in case of network errors, or status codes of 400 and above.
+    //Note that if the maxAttempts is set to higher than 1, the error is thrown only if all attempts fail.
+    console.log("Download failed", error);
+  }
 
   return new Promise((resolve, reject) => {
     https.get(fileUrl, (response) => {
       const fileStream = fs.createWriteStream(filename);
       response.pipe(fileStream);
-      fileStream.on("finish", () => {
-        console.log(`File saved as ${filename}`);
-
-        const dest = path.dirname(filename);
-        const extractDir = path.join(dest, "download");
-        // 判断目录是否存在，不存在则创建
-        if (!fs.existsSync(extractDir)) {
-          fs.mkdirSync(extractDir, { recursive: true }, function (err) {
-            if (err) {
-              return reject(err);
-            }
-          });
-        }
-
-        const extractFinish = () => {
-          // 最终BIN文件名
-          const binFile = path.join(dest, binName);
-          //   console.log("final bin name", binFile);
-          //   console.log("extract dir", extractDir);
-
-          // 迁移bin文件到可执行目录
-          const files = traverseDirectory(extractDir);
-
-          // 打印所有文件
-          //   console.log("files", files);
-
-          files.some(function (file) {
-            const arr = file.split("/");
-            if (!/^daobox\-site/.test(arr[arr.length - 1])) {
-              return false;
-            }
-
-            // 使用 fs.rename 方法将文件从源路径移动到目标路径
-            fs.renameSync(file, binFile, function (err) {
-              if (err) {
-                throw err;
-              }
-            });
-
-            return true;
-          });
-
-          deleteDirectory(extractDir);
-          fs2.unlinkSync(filename);
-
-          fs2.chmodSync(binFile, 493);
-        };
-
-        // 解压缩
-        if (/\.tar\.gz$/.test(filename)) {
-          const readStream = fs.createReadStream(filename);
-          const unzip = zlib.createGunzip(); // 创建 gunzip 解压缩流
-          const untar = tar.x({
-            sync: true,
-            C: extractDir, // alias for cwd:'some-dir', also ok
-          }); // 创建 tar 解压缩流
-
-          readStream
-            .pipe(unzip) // 使用 gunzip 解压缩流
-            .pipe(untar) // 使用 tar 解压缩流
-            .on("error", (err) => {
-              console.error(err);
-            })
-            .on("finish", () => {
-              //   console.log("解压缩完成", filename, extractDir);
-
-              try {
-                extractFinish();
-                resolve();
-              } catch (err) {
-                reject(err);
-              }
-            });
-        } else if (/\.zip$/.test(filename)) {
-          const zip = new AdmZip(filename); // 指定 ZIP 文件路径
-          zip.extractAllTo(extractDir, true); // 解压 ZIP 文件到指定目录
-          try {
-            extractFinish();
-            resolve();
-          } catch (err) {
-            reject(err);
-          }
-        } else {
-          reject(`not support archive package: ${pkg}`);
-        }
-      });
+      fileStream.on("finish", () => {});
       fileStream.on("error", (e) => {
         reject(e);
       });

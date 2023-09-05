@@ -1,6 +1,6 @@
 {
   "name": "daobox-site",
-  "version": "0.3.8",
+  "version": "0.4.1",
   "description": "",
   "scripts": {
     "postinstall": "node install.js",
@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
+    "nodejs-file-downloader": "^4.12.1",
     "tar": "^6.1.13"
   }
 }
