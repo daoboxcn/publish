@@ -12,13 +12,13 @@ function pkgAndSubpathForCurrentPlatform() {
   let platformKey = `${process.platform} ${os.arch()}`;
   switch (process.platform) {
     case "win32":
-      binName = "daobox-site.exe";
+      binName = "daobox-publish.exe";
       break;
     case "darwin":
-      binName = "daobox-site.bin";
+      binName = "daobox-publish.bin";
       break;
     case "linux":
-      binName = "daobox-site.bin";
+      binName = "daobox-publish.bin";
       break;
     default:
       throw new Error(`Unsupported platform: ${platformKey}`);

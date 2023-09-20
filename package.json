@@ -1,6 +1,6 @@
 {
-  "name": "daobox-site",
-  "version": "0.4.2",
+  "name": "daobox-publish",
+  "version": "0.6.0",
   "description": "",
   "scripts": {
     "postinstall": "node install.js",
@@ -13,7 +13,7 @@
     "node": ">=12"
   },
   "bin": {
-    "daobox-site": "bin/daobox-site"
+    "daobox-publish": "bin/daobox-publish"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",

@@ -56,10 +56,10 @@ function pkgAndSubpathForCurrentPlatform() {
   let platformKey = `${process.platform} ${os.arch()}`;
   if (platformKey in knownWindowsPackages) {
     pkg = knownWindowsPackages[platformKey];
-    binName = "daobox-site.exe";
+    binName = "daobox-publish.exe";
   } else if (platformKey in knownUnixlikePackages) {
     pkg = knownUnixlikePackages[platformKey];
-    binName = "daobox-site.bin";
+    binName = "daobox-publish.bin";
   } else {
     throw new Error(`Unsupported platform: ${platformKey}`);
   }
@@ -122,9 +122,9 @@ function validateBinaryVersion(...command) {
             .toString()
             .trim();
       } catch {}
-      throw new Error(`The "daobox-site" package cannot be installed because ${os3} is too outdated.
+      throw new Error(`The "daobox-publish" package cannot be installed because ${os3} is too outdated.
 
-The "daobox-site" binary executable can't be run. 
+The "daobox-publish" binary executable can't be run. 
 `);
     }
     throw err;
@@ -185,9 +185,9 @@ function traverseDirectory(directory) {
 }
 
 async function downloadBinary(pkg, binName) {
-  // const fileUrl = `https://assets.daobox.cc/daobox-site/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
-  const fileUrl = `https://github.com/daoboxcn/site/releases/download/daobox-site%40v${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
-  // const fileUrl = "http://localhost:8000/daobox/daobox-site.tar.gz";
+  // const fileUrl = `https://assets.daobox.cc/daobox-publish/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+  const fileUrl = `https://github.com/daoboxcn/site/releases/download/daobox-publish%40v${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+  // const fileUrl = "http://localhost:8000/daobox/daobox-publish.tar.gz";
   const filename = path.join(__dirname, "bin", pkg);
   const dest = path.dirname(filename);
   console.log("download daobox binary:", fileUrl);
