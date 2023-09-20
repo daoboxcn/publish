@@ -185,8 +185,8 @@ function traverseDirectory(directory) {
 }
 
 async function downloadBinary(pkg, binName) {
-  // const fileUrl = `https://assets.daobox.cc/daobox-publish/stable/${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
-  const fileUrl = `https://github.com/daoboxcn/site/releases/download/daobox-publish%40v${versionFromPackageJSON}/DaoboxSite_${versionFromPackageJSON}_${pkg}`;
+  // const fileUrl = `https://assets.daobox.cc/daobox-publish/stable/${versionFromPackageJSON}/DaoboxPublish_${versionFromPackageJSON}_${pkg}`;
+  const fileUrl = `https://github.com/daoboxcn/publish/releases/download/daobox-publish%40v${versionFromPackageJSON}/DaoboxPublish_${versionFromPackageJSON}_${pkg}`;
   // const fileUrl = "http://localhost:8000/daobox/daobox-publish.tar.gz";
   const filename = path.join(__dirname, "bin", pkg);
   const dest = path.dirname(filename);
@@ -238,7 +238,7 @@ async function downloadBinary(pkg, binName) {
 
         files.some(function (file) {
           const arr = file.split("/");
-          if (!/^daobox\-site/.test(arr[arr.length - 1])) {
+          if (!/^daobox\-publish/.test(arr[arr.length - 1])) {
             return false;
           }
 
