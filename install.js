@@ -56,10 +56,10 @@ function pkgAndSubpathForCurrentPlatform() {
   let platformKey = `${process.platform} ${os.arch()}`;
   if (platformKey in knownWindowsPackages) {
     pkg = knownWindowsPackages[platformKey];
-    binName = "daobox-publish.exe";
+    binName = "everkm-publish.exe";
   } else if (platformKey in knownUnixlikePackages) {
     pkg = knownUnixlikePackages[platformKey];
-    binName = "daobox-publish.bin";
+    binName = "everkm-publish.bin";
   } else {
     throw new Error(`Unsupported platform: ${platformKey}`);
   }
@@ -122,9 +122,9 @@ function validateBinaryVersion(...command) {
             .toString()
             .trim();
       } catch {}
-      throw new Error(`The "daobox-publish" package cannot be installed because ${os3} is too outdated.
+      throw new Error(`The "everkm-publish" package cannot be installed because ${os3} is too outdated.
 
-The "daobox-publish" binary executable can't be run. 
+The "everkm-publish" binary executable can't be run. 
 `);
     }
     throw err;
@@ -185,12 +185,12 @@ function traverseDirectory(directory) {
 }
 
 async function downloadBinary(pkg, binName) {
-  // const fileUrl = `https://assets.daobox.cc/daobox-publish/stable/${versionFromPackageJSON}/DaoboxPublish_${versionFromPackageJSON}_${pkg}`;
-  const fileUrl = `https://github.com/daoboxcn/publish/releases/download/daobox-publish%40v${versionFromPackageJSON}/DaoboxPublish_${versionFromPackageJSON}_${pkg}`;
-  // const fileUrl = "http://localhost:8000/daobox/daobox-publish.tar.gz";
+  // const fileUrl = `https://assets.daobox.cc/everkm-publish/stable/${versionFromPackageJSON}/EverkmPublish_${versionFromPackageJSON}_${pkg}`;
+  const fileUrl = `https://github.com/everkm/publish/releases/download/everkm-publish%40v${versionFromPackageJSON}/EverkmPublish_${versionFromPackageJSON}_${pkg}`;
+  // const fileUrl = "http://localhost:8000/daobox/everkm-publish.tar.gz";
   const filename = path.join(__dirname, "bin", pkg);
   const dest = path.dirname(filename);
-  console.log("download daobox binary:", fileUrl);
+  console.log("download everkm publish binary:", fileUrl);
 
   const proxy =
     process.env.https_proxy ||
@@ -238,7 +238,7 @@ async function downloadBinary(pkg, binName) {
 
         files.some(function (file) {
           const arr = file.split("/");
-          if (!/^daobox\-publish/.test(arr[arr.length - 1])) {
+          if (!/^everkm\-publish/.test(arr[arr.length - 1])) {
             return false;
           }
 
@@ -299,7 +299,7 @@ async function downloadBinary(pkg, binName) {
   } catch (error) {
     //IMPORTANT: Handle a possible error. An error is thrown in case of network errors, or status codes of 400 and above.
     //Note that if the maxAttempts is set to higher than 1, the error is thrown only if all attempts fail.
-    console.log("Download failed", error);
+    console.error("download failed", error);
   }
 
   return new Promise((resolve, reject) => {
