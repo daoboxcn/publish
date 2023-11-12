@@ -1,5 +1,6 @@
 "use strict";
 const Downloader = require("nodejs-file-downloader");
+// const decompress = require("decompress");
 
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -27,12 +28,13 @@ var path = require("path");
 var knownWindowsPackages = {
   //   "win32 arm64": "@esbuild/win32-arm64",
   //   "win32 ia32": "@esbuild/win32-ia32",
-  "win32 x64": "windows-amd64.tar.gz",
+  "win32 x64": "windows-amd64.zip",
 };
 var knownUnixlikePackages = {
   //   "android arm64": "@esbuild/android-arm64",
   //   "darwin arm64": "@esbuild/darwin-arm64",
-  "darwin x64": "macOS-amd64.tar.gz",
+  "darwin arm64": "darwin-universal.zip",
+  "darwin x64": "darwin-universal.zip",
   //   "freebsd arm64": "@esbuild/freebsd-arm64",
   //   "freebsd x64": "@esbuild/freebsd-x64",
   //   "linux arm": "@esbuild/linux-arm",
@@ -42,7 +44,7 @@ var knownUnixlikePackages = {
   //   "linux ppc64": "@esbuild/linux-ppc64",
   //   "linux riscv64": "@esbuild/linux-riscv64",
   //   "linux s390x BE": "@esbuild/linux-s390x",
-  "linux x64": "linux-amd64.tar.gz",
+  "linux x64": "linux-amd64.zip",
   //   "linux loong64": "@esbuild/linux-loong64",
   //   "netbsd x64": "@esbuild/netbsd-x64",
   //   "openbsd x64": "@esbuild/openbsd-x64",
@@ -161,7 +163,7 @@ function deleteDirectory(path) {
     });
     // 删除目录本身
     fs.rmdirSync(path);
-    console.log(`Successfully deleted the directory ${path}`);
+    console.log(`Successfully removed directory ${path}`);
   } else {
     console.log(`Directory ${path} does not exist`);
   }
@@ -185,9 +187,16 @@ function traverseDirectory(directory) {
 }
 
 async function downloadBinary(pkg, binName) {
-  // const fileUrl = `https://assets.daobox.cc/everkm-publish/stable/${versionFromPackageJSON}/EverkmPublish_${versionFromPackageJSON}_${pkg}`;
-  const fileUrl = `https://github.com/everkm/publish/releases/download/everkm-publish%40v${versionFromPackageJSON}/EverkmPublish_${versionFromPackageJSON}_${pkg}`;
-  // const fileUrl = "http://localhost:8000/daobox/everkm-publish.tar.gz";
+  const binaryDist = (process.env.EVERKM_PUBLISH_BINARY || "").replace(
+    /\/$/,
+    ""
+  );
+  let fileUrl = `https://github.com/everkm/publish/releases/download/everkm-publish%40v${versionFromPackageJSON}/EverkmPublish_${versionFromPackageJSON}_${pkg}`;
+  if (binaryDist) {
+    // fileUrl = `https://assets.daobox.cc/everkm-publish/stable/${versionFromPackageJSON}/EverkmPublish_${versionFromPackageJSON}_${pkg}`;
+    fileUrl = `${binaryDist}/${versionFromPackageJSON}/EverkmPublish_${versionFromPackageJSON}_${pkg}`;
+  }
+  // const fileUrl = "http://localhost:8000/daobox/everkm-publish.zip";
   const filename = path.join(__dirname, "bin", pkg);
   const dest = path.dirname(filename);
   console.log("download everkm publish binary:", fileUrl);
@@ -202,6 +211,7 @@ async function downloadBinary(pkg, binName) {
   const params = {
     url: fileUrl,
     directory: dest,
+    cloneFiles: false,
   };
   if (proxy) {
     params.proxy = proxy;
@@ -210,7 +220,9 @@ async function downloadBinary(pkg, binName) {
 
   try {
     const { filePath, downloadStatus } = await downloader.download(); //Downloader.download() resolves with some useful properties.
-    console.log(`File saved as ${filePath}`);
+    const stats = fs.statSync(filePath);
+
+    console.log(`File saved as ${filePath}, size: ${stats.size} bytes`);
     const filename = filePath;
 
     return new Promise((resolve, reject) => {
@@ -234,7 +246,7 @@ async function downloadBinary(pkg, binName) {
         const files = traverseDirectory(extractDir);
 
         // 打印所有文件
-        //   console.log("files", files);
+        console.log("files", files);
 
         files.some(function (file) {
           const arr = file.split("/");
@@ -259,42 +271,51 @@ async function downloadBinary(pkg, binName) {
       };
 
       // 解压缩
-      if (/\.tar\.gz$/.test(filename)) {
-        const readStream = fs.createReadStream(filename);
-        const unzip = zlib.createGunzip(); // 创建 gunzip 解压缩流
-        const untar = tar.x({
-          sync: true,
-          C: extractDir, // alias for cwd:'some-dir', also ok
-        }); // 创建 tar 解压缩流
+      // decompress(filename, extractDir)
+      //   .then((files) => {
+      //     console.log("extract done,", files);
+      //     extractFinish();
+      //   })
+      //   .catch((err) => {
+      //     reject(err);
+      //   });
 
-        readStream
-          .pipe(unzip) // 使用 gunzip 解压缩流
-          .pipe(untar) // 使用 tar 解压缩流
-          .on("error", (err) => {
-            console.error(err);
-          })
-          .on("finish", () => {
-            //   console.log("解压缩完成", filename, extractDir);
+      // if (/\.tar\.gz$/.test(filename)) {
+      //   const readStream = fs.createReadStream(filename);
+      //   const unzip = zlib.createGunzip(); // 创建 gunzip 解压缩流
+      //   const untar = tar.x({
+      //     sync: true,
+      //     C: extractDir, // alias for cwd:'some-dir', also ok
+      //   }); // 创建 tar 解压缩流
 
-            try {
-              extractFinish();
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          });
-      } else if (/\.zip$/.test(filename)) {
-        const zip = new AdmZip(filename); // 指定 ZIP 文件路径
-        zip.extractAllTo(extractDir, true); // 解压 ZIP 文件到指定目录
-        try {
-          extractFinish();
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      } else {
-        reject(`not support archive package: ${pkg}`);
+      //   readStream
+      //     .pipe(unzip) // 使用 gunzip 解压缩流
+      //     .pipe(untar) // 使用 tar 解压缩流
+      //     .on("error", (err) => {
+      //       console.error(err);
+      //     })
+      //     .on("finish", () => {
+      //       //   console.log("解压缩完成", filename, extractDir);
+
+      //       try {
+      //         extractFinish();
+      //         resolve();
+      //       } catch (err) {
+      //         reject(err);
+      //       }
+      //     });
+      // } else if (/\.zip$/.test(filename)) {
+      const zip = new AdmZip(filename); // 指定 ZIP 文件路径
+      zip.extractAllTo(extractDir, true); // 解压 ZIP 文件到指定目录
+      try {
+        extractFinish();
+        resolve();
+      } catch (err) {
+        reject(err);
       }
+      // } else {
+      //   reject(`not support archive package: ${pkg}`);
+      // }
     });
   } catch (error) {
     //IMPORTANT: Handle a possible error. An error is thrown in case of network errors, or status codes of 400 and above.

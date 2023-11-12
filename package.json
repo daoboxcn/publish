@@ -1,6 +1,6 @@
 {
   "name": "everkm-publish",
-  "version": "0.10.0",
+  "version": "0.10.5",
   "description": "",
   "scripts": {
     "postinstall": "node install.js",
@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
+    "decompress": "^4.2.1",
     "nodejs-file-downloader": "^4.12.1",
     "tar": "^6.1.13"
   }
