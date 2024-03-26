@@ -1,6 +1,9 @@
-## 使用方法
+## Usage
 
-请移步至[官网](https://publish.everkm.cn)。
+Static Content Generator. Pure
+HTML template engine base on markdown files, syntax from Jinja2. Built for
+official website, Blog and WIKI, and so on. 
+Please to visit [Everkm Publish](https://publish.everkm.com) for more details。
 
 ## 中国用户安装
 
