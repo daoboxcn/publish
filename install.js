@@ -250,7 +250,7 @@ async function downloadBinary(pkg, binName) {
 
         files.some(function (file) {
           const arr = file.split("/");
-          if (!/^everkm\-publish/.test(arr[arr.length - 1])) {
+          if (!/^everkm-publish/.test(arr[arr.length - 1])) {
             return false;
           }
 
